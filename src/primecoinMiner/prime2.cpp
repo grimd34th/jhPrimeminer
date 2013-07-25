@@ -3,7 +3,7 @@
 // see the accompanying file COPYING
 
 #include "global.h"
-/* removed dep for git until fully working.
+//removed dep for git until fully working.
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -38,7 +38,7 @@ int initializeCUDA(int device)
 	printf("Init Cuda Device: %d\n",device);
     return 0;
 }
-*/
+
 // Prime Table
 //std::vector<unsigned int> vPrimes;
 uint32* vPrimes;
@@ -565,6 +565,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 	nProbableChainLength = 0;
 	nTests = 0;
 	nPrimesHit = 0;
+
 	if (fNewBlock && *psieve != NULL)
 	{
 		// Must rebuild the sieve
@@ -572,7 +573,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 		*psieve = NULL;
 	}
 	fNewBlock = false;
-
+	
 	//int64 nStart, nCurrent; // microsecond timer
 	if (*psieve == NULL)
 	{
@@ -691,6 +692,158 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 		//if(TargetGetLength(nProbableChainLength) >= 1)
 		//	nPrimesHit++;
 		//nCurrent = GetTickCount();
+	}
+	if( *psieve )
+	{
+		delete *psieve;
+		*psieve = NULL;
+	}
+	return false; // stop as timed out
+}
+
+struct cudaCandidate cudaCandidateTransferArray[MAX_CANDIDATES];
+char resultsHost[MAX_CANDIDATES];
+
+mpz_class mpzPrimeChainMultipliers[MAX_CANDIDATES];
+mpz_class mpzChainOrigins[MAX_CANDIDATES];
+
+// Mine probable prime chain of form: n = h * p# +/- 1
+bool CudaMineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* block, mpz_class& bnFixedMultiplier, bool& fNewBlock, unsigned int& nTriedMultiplier, unsigned int& nProbableChainLength, unsigned int& nTests, unsigned int& nPrimesHit)
+{
+	nProbableChainLength = 0;
+	nTests = 0;
+	nPrimesHit = 0;
+	if (fNewBlock && *psieve != NULL)
+	{
+		// Must rebuild the sieve
+		delete *psieve;
+		*psieve = NULL;
+	}
+	fNewBlock = false;
+
+	//int64 nStart, nCurrent; // microsecond timer
+	if (*psieve == NULL)
+	{
+		// Build sieve
+		uint32 nStart = GetTickCount();
+		*psieve = new CSieveOfEratosthenes(nMaxSieveSize, block->nBits, block->blockHeaderHash, bnFixedMultiplier);
+		(*psieve)->WeaveFastAll();
+		uint32 maskBytes = (nMaxSieveSize+7)/8;
+	}
+
+	mpz_class bnChainOrigin;
+
+	uint32 nTries = 0;
+	while ( nTries < 100 )//&& block->serverData.blockHeight == jhMiner_getCurrentWorkBlockHeight(block->threadIndex) )
+	{
+
+		if (!(*psieve)->GetNextCandidateMultiplier(nTriedMultiplier))
+		{
+			// power tests completed for the sieve
+			delete *psieve;
+			*psieve = NULL;
+			fNewBlock = true; // notify caller to change nonce
+			return false;
+		}
+		//bnChainOrigin = mpz_class(block->blockHeaderHash) * bnFixedMultiplier * nTriedMultiplier;
+
+		mpzPrimeChainMultipliers[nTries] = bnFixedMultiplier * nTriedMultiplier;
+		mpz_class mpzHash;
+		mpz_set_uint256(mpzHash.get_mpz_t(), block->blockHeaderHash);
+		mpzChainOrigins[nTries] = mpzHash * mpzPrimeChainMultipliers[nTries];
+		unsigned int nChainLengthCunningham1 = 0;
+		unsigned int nChainLengthCunningham2 = 0;
+		unsigned int nChainLengthBiTwin = 0;
+		
+		//add some stuff here
+		//mpz_get_str(cudaCandidateTransferArray[0].chainOrigin.digits,16,mpzChainOrigins[nTries].get_mpz_t());
+        //mpz_get_str(cudaCandidateTransferArray[0].strPrimeChainMultiplier,16,mpzPrimeChainMultipliers[nTries].get_mpz_t());
+
+        cudaCandidateTransferArray[nTries].blocknBits = block->nBits;
+        mpz_get_str(cudaCandidateTransferArray[nTries].strChainOrigin,16,mpzChainOrigins[nTries].get_mpz_t());
+        mpz_get_str(cudaCandidateTransferArray[nTries].strPrimeChainMultiplier,16,mpzPrimeChainMultipliers[nTries].get_mpz_t());
+
+
+		nTries++;
+		printf("nTries: %d\n", nTries);
+		nTests++;
+	}
+	printf("Have %i candidates after main loop\n", nTries);
+
+	if(nTries > 0)
+    {
+        cudaCandidate *cudaCandidateTransferArrayDevice = newDevicePointer<cudaCandidate>(nTries);
+        char *resultsDevice = newDevicePointer<char>(nTries);
+        //memcpy to device
+        cudaMemcpy(cudaCandidateTransferArrayDevice, cudaCandidateTransferArray , sizeof(cudaCandidate)*nTries, cudaMemcpyHostToDevice);
+        checkForCudaError("cudaMemcpy: cudaMemcpyHostToDevice");
+        runCandidateSearchKernel(cudaCandidateTransferArrayDevice, resultsDevice, nTries);
+        checkForCudaError("launch kernel");
+		printf("launch kernel\n");
+        //memcpy from device
+        cudaMemcpy(resultsHost, resultsDevice, sizeof(char)*nTries, cudaMemcpyDeviceToHost);
+        checkForCudaError("cudaMemcpy: cudaMemcpyDeviceToHost");
+
+		cudaFree(resultsDevice);
+		cudaFree(cudaCandidateTransferArrayDevice);
+
+		//printf("CUDA kernel round done\n");
+		fflush(stdout);	
+		for(int i=0; i < nTries; i++)
+        {
+			if(resultsHost[i]==0x01){
+			{
+				unsigned int nChainLengthCunningham1 = 0;
+				unsigned int nChainLengthCunningham2 = 0;
+				unsigned int nChainLengthBiTwin = 0;
+
+				bool canSubmitAsShare = ProbablePrimeChainTest(mpzChainOrigins[i], block->nBits, false, nChainLengthCunningham1, nChainLengthCunningham2, nChainLengthBiTwin);
+			
+				nProbableChainLength = max(max(nChainLengthCunningham1, nChainLengthCunningham2), nChainLengthBiTwin);
+
+				if( nProbableChainLength >= block->serverData.nBitsForShare )
+					canSubmitAsShare = true;
+				//if( nBitsGen >= 0x03000000 )
+				//	printf("%08X\n", nBitsGen);
+				primeStats.primeChainsFound++;
+				//if( nProbableChainLength > 0x03000000 )
+				//	primeStats.qualityPrimesFound++;
+				if( nProbableChainLength > primeStats.bestPrimeChainDifficulty )
+					primeStats.bestPrimeChainDifficulty = nProbableChainLength;
+
+				if(canSubmitAsShare)
+				{
+					block->bnPrimeChainMultiplier = bnFixedMultiplier * nTriedMultiplier;
+					// update server data
+					block->serverData.client_shareBits = nProbableChainLength;
+					// generate block raw data
+					uint8 blockRawData[256] = {0};
+					memcpy(blockRawData, block, 80);
+					uint32 writeIndex = 80;
+					sint32 lengthBN = 0;
+					CBigNum bnPrimeChainMultiplier;
+			
+					bnPrimeChainMultiplier.SetHex(block->bnPrimeChainMultiplier.get_str(16));
+
+
+					std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
+					lengthBN = bnSerializeData.size();
+					*(uint8*)(blockRawData+writeIndex) = (uint8)lengthBN; // varInt (we assume it always has a size low enough for 1 byte)
+					writeIndex += 1;
+					memcpy(blockRawData+writeIndex, &bnSerializeData[0], lengthBN);
+					writeIndex += lengthBN;	
+					// switch endianness
+					for(uint32 f=0; f<256/4; f++)
+					{
+						*(uint32*)(blockRawData+f*4) = _swapEndianessU32(*(uint32*)(blockRawData+f*4));
+					}
+					// submit this share
+					jhMiner_pushShare_primecoin(blockRawData, block);
+					RtlZeroMemory(blockRawData, 256);
+				}
+			}
+			}
+		}
 	}
 	if( *psieve )
 	{

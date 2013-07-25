@@ -45,6 +45,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 5.5.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -81,11 +82,15 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>lib\openssl\libeay32MT.lib;lib\openssl\ssleay32MT.lib;lib\mpir\Debug32\mpir.lib;lib\mpir\Debug32\mpirxx.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudart.lib;cuda.lib;lib\openssl\libeay32MT.lib;lib\openssl\ssleay32MT.lib;lib\mpir\Debug32\mpir.lib;lib\mpir\Debug32\mpirxx.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\ProgramData\NVIDIA Corporation\CUDA Samples\v5.5\common\lib\$(PlatformName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
+    <CudaCompile>
+      <Include>C:\ProgramData\NVIDIA Corporation\CUDA Samples\v5.5\common\inc\;</Include>
+      <Runtime>InheritFromHost</Runtime>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
@@ -126,12 +131,17 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>lib\openssl\libeay32MT.lib;lib\openssl\ssleay32MT.lib;lib\mpir\Release32\mpir.lib;lib\mpir\Release32\mpirxx.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart.lib;lib\openssl\libeay32MT.lib;lib\openssl\ssleay32MT.lib;lib\mpir\Release32\mpir.lib;lib\mpir\Release32\mpirxx.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalLibraryDirectories>C:\ProgramData\NVIDIA Corporation\CUDA Samples\v5.5\common\lib\$(PlatformName);%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
     </Link>
+    <CudaCompile>
+      <Include>C:\ProgramData\NVIDIA Corporation\CUDA Samples\v5.5\common\inc\;</Include>
+      <Emulation>true</Emulation>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
@@ -307,12 +317,26 @@
     <ClInclude Include="xptServer.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cuda\mainkernel.cu">
+    <None Include="cuda\cuPrintf.cu">
       <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </None>
+    <CudaCompile Include="cuda\mainkernel.cu">
+      <FileType>Document</FileType>
+      <Emulation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</Emulation>
+      <Runtime Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MTd</Runtime>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cuda\cuPrintf.cuh">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 5.5.targets" />
   </ImportGroup>
 </Project>

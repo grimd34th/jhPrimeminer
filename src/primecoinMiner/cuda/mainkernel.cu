@@ -4,6 +4,14 @@
 #include "mpz.h"    // multiple precision cuda code
 #include "cuda_string.h"
 
+// System includes
+#include <stdio.h>
+#include <assert.h>
+
+// CUDA runtime
+#include <cuda_runtime.h>
+
+
 //__device__ mpz_t mpzTemp;
 
 #define mpz_clear mpz_destroy
@@ -471,6 +479,8 @@ __device__ bool devProbablePrimeChainTest(mpz_t &mpzPrimeChainOrigin, unsigned i
 
 __global__ void runCandidateSearch(cudaCandidate *candidates, char *result, unsigned int num_candidates)
 {
+	//cuPrintf("test\n");
+	
     mpz_t mpzOne;
     mpz_init(&mpzOne);
     mpz_set_ui(&mpzOne,1);
@@ -486,14 +496,19 @@ __global__ void runCandidateSearch(cudaCandidate *candidates, char *result, unsi
     mpz_init(&mpzN2);
     //mpz_set_ui(&mpzOne,1);
 
-	unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int indexx = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int index = 0;
+	
+	
 	//check bounds
-	if (index < num_candidates)
+	//cudaCandidate candidate = candidates[0];
+	//cuPrintf("[0] candidate is %s\n",candidate.strChainOrigin);
+	if (indexx < num_candidates)
 	{
 		if(index==0)
 		{
-			//printf("[0] start! \n");
-			//printf("sizeof(struct) = %i\n",sizeof(cudaCandidate));		
+			//cuPrintf("[0] start! \n");
+			//cuPrintf("sizeof(struct) = %i\n",sizeof(cudaCandidate));		
 		}
 
 		cudaCandidate candidate = candidates[index];
@@ -542,6 +557,7 @@ __global__ void runCandidateSearch(cudaCandidate *candidates, char *result, unsi
 			if(devFermatProbablePrimalityTestWithPrint(mpzN1, nLength, index) || devFermatProbablePrimalityTestWithPrint(mpzN2, nLength, index))
 			{*/
 				testresult = 0x01;
+
 			//}
 		}
 		
@@ -573,6 +589,11 @@ __global__ void runCandidateSearch(cudaCandidate *candidates, char *result, unsi
 void runCandidateSearchKernel(cudaCandidate *candidates, char *result, unsigned int num_candidates)
 {
 	//TODO: make gridsize dynamic
-	runCandidateSearch<<< 24 , 40>>>(candidates, result, num_candidates);
+	dim3 grid(1);
+	dim3 block(1);
+
+	printf("num: %d",num_candidates);
+	runCandidateSearch<<<grid,block>>>(candidates, result, num_candidates);
+	//cudaDeviceSynchronize();
 
 }

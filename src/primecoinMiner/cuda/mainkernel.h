@@ -1,4 +1,4 @@
-#define MAX_CANDIDATES 960
+#define MAX_CANDIDATES 100
 
 struct cudaCandidate {
     char strChainOrigin[512];

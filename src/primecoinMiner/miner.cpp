@@ -2,6 +2,8 @@
 
 
 bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* block, mpz_class& bnFixedMultiplier, bool& fNewBlock, unsigned int& nTriedMultiplier, unsigned int& nProbableChainLength, unsigned int& nTests, unsigned int& nPrimesHit);
+bool CudaMineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* block, mpz_class& bnFixedMultiplier, bool& fNewBlock, unsigned int& nTriedMultiplier, unsigned int& nProbableChainLength, unsigned int& nTests, unsigned int& nPrimesHit);
+
 
 void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 {
@@ -138,7 +140,8 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 		//printf("fixedMultiplier: %d nPrimorialMultiplier: %d\n", BN_get_word(&bnFixedMultiplier), nPrimorialMultiplier);
 		// Primecoin: mine for prime chain
 		unsigned int nProbableChainLength;
-		if (MineProbablePrimeChain(&psieve, primecoinBlock, bnFixedMultiplier, fNewBlock, nTriedMultiplier, nProbableChainLength, nTests, nPrimesHit))
+		
+		if (CudaMineProbablePrimeChain(&psieve, primecoinBlock, bnFixedMultiplier, fNewBlock, nTriedMultiplier, nProbableChainLength, nTests, nPrimesHit))
 		{
 			// do nothing here, share is already submitted in MineProbablePrimeChain()
 			break;

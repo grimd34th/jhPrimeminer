@@ -484,7 +484,15 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="cuda\mainkernel.cu">
+    <CudaCompile Include="cuda\mainkernel.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cuda\cuPrintf.cuh">
+      <Filter>Source Files\cuda</Filter>
+    </None>
+    <None Include="cuda\cuPrintf.cu">
       <Filter>Source Files\cuda</Filter>
     </None>
   </ItemGroup>
