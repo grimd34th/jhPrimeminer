@@ -10,6 +10,7 @@
 #include "cuda\mainkernel.h"
 
 
+
 //check for cuda error and initilize
 void checkForCudaError(const char* desc)
 {
@@ -734,7 +735,7 @@ bool CudaMineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t*
 	mpz_class bnChainOrigin;
 
 	uint32 nTries = 0;
-	while ( nTries < 100 )//&& block->serverData.blockHeight == jhMiner_getCurrentWorkBlockHeight(block->threadIndex) )
+	while ( nTries < 1)//&& block->serverData.blockHeight == jhMiner_getCurrentWorkBlockHeight(block->threadIndex) )
 	{
 
 		if (!(*psieve)->GetNextCandidateMultiplier(nTriedMultiplier))
@@ -760,12 +761,16 @@ bool CudaMineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t*
         //mpz_get_str(cudaCandidateTransferArray[0].strPrimeChainMultiplier,16,mpzPrimeChainMultipliers[nTries].get_mpz_t());
 
         cudaCandidateTransferArray[nTries].blocknBits = block->nBits;
-        mpz_get_str(cudaCandidateTransferArray[nTries].strChainOrigin,16,mpzChainOrigins[nTries].get_mpz_t());
-        mpz_get_str(cudaCandidateTransferArray[nTries].strPrimeChainMultiplier,16,mpzPrimeChainMultipliers[nTries].get_mpz_t());
+        //mpz_get_str(cudaCandidateTransferArray[nTries].strChainOrigin,16,mpzChainOrigins[nTries].get_mpz_t());
+        //mpz_get_str(cudaCandidateTransferArray[nTries].,16,mpzPrimeChainMultipliers[nTries].get_mpz_t());
 
-
-		nTries++;
+		mpz_export(&cudaCandidateTransferArray[nTries].chainOrigin.digits, NULL, 1, sizeof(cudaCandidateTransferArray[nTries].chainOrigin.digits), 0, 0, mpzChainOrigins[nTries].get_mpz_t());
+		cudaCandidateTransferArray[nTries].chainOrigin.capacity = DIGITS_CAPACITY;
+		cudaCandidateTransferArray[nTries].chainOrigin.sign = 0;
 		printf("nTries: %d\n", nTries);
+		nTries++;
+		
+
 		nTests++;
 	}
 	printf("Have %i candidates after main loop\n", nTries);
@@ -796,6 +801,7 @@ bool CudaMineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t*
 				unsigned int nChainLengthCunningham1 = 0;
 				unsigned int nChainLengthCunningham2 = 0;
 				unsigned int nChainLengthBiTwin = 0;
+
 
 				bool canSubmitAsShare = ProbablePrimeChainTest(mpzChainOrigins[i], block->nBits, false, nChainLengthCunningham1, nChainLengthCunningham2, nChainLengthBiTwin);
 			
