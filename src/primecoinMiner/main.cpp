@@ -628,7 +628,7 @@ int main(int argc, char **argv)
 	GetSystemInfo( &sysinfo );
 	commandlineInput.numThreads = sysinfo.dwNumberOfProcessors;
 	commandlineInput.numThreads = max(commandlineInput.numThreads, 1);
-	commandlineInput.sieveSize = 1000000; // default maxSieveSize
+	commandlineInput.sieveSize = 800000; // default maxSieveSize
 	// parse command lines
 	jhMiner_parseCommandline(argc, argv);
 	// Sets max sieve size
@@ -801,7 +801,7 @@ int mainPerformanceTest()
 {
 	GeneratePrimeTable();
 	// performance test for sieve generation
-	sint32 sieveSize = 1000000;
+	sint32 sieveSize = 800000;
 	uint32 nBits = 0x07fb8bcc;
 	uint256 blockHashHeader;
 	yPoolWorkMgr_parseHexString("eed69c071ac2634ffc2a9e73177d1c5fad92fdf06f6d711c2f04877906ad6aef", 32*2, blockHashHeader.begin());
