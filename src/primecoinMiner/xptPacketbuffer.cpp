@@ -61,8 +61,25 @@ uint32 xptPacketbuffer_getReadSize(xptPacketbuffer_t* pb)
 {
 	return pb->bufferSize - pb->parserIndex;
 }
+ /*
+ * Reads a single float from the packet
+ * Returns 0 on error
+ */
+float xptPacketbuffer_readFloat(xptPacketbuffer_t* pb, bool* error)
+{
+  if( (pb->parserIndex+4) > pb->bufferSize )
+  {
+    pb->parserIndex = pb->bufferSize;
+    *error = true;
+    return 0;
+  }
+  float v = *(float*)(pb->buffer+pb->parserIndex);
+  pb->parserIndex += 4;
+  *error = false;
+  return v;
+}
 
-/*
+/* 
  * Reads a single uint32 from the packet
  * Returns 0 on error
  */
@@ -135,6 +152,22 @@ void xptPacketbuffer_readData(xptPacketbuffer_t* pb, uint8* data, uint32 length,
 }
 
 /*
+ * Writes a single float to the packet
+ */
+void xptPacketbuffer_writeFloat(xptPacketbuffer_t* pb, bool* error, float v)
+{
+  if( (pb->parserIndex+4) > pb->bufferLimit )
+  {
+    *error = true;
+    return;
+  }
+  *(float*)(pb->buffer+pb->parserIndex) = v; 
+  pb->parserIndex += 4;
+  *error = false;
+  return;
+}
+
+/* 
  * Writes a single uint32 to the packet
  */
 void xptPacketbuffer_writeU32(xptPacketbuffer_t* pb, bool* error, uint32 v)
